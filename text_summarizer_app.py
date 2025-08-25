@@ -3,7 +3,7 @@
 Enhanced Text Summarizer Application Controller
 
 Advanced AI-powered summarization with SRT timestamp support.
-REFACTORED - Step 2: Now uses BaseController inheritance
+REFACTORED - Step 3: Now uses FileController for file operations
 
 """
 
@@ -15,6 +15,8 @@ from typing import Optional
 
 # Import base controller - STEP 2 ADDITION
 from controllers.base_controller import BaseController
+# Import file controller - STEP 3 ADDITION
+from controllers.file_controller import FileController
 
 # Import our enhanced modules
 try:
@@ -31,6 +33,9 @@ class EnhancedSummarizerController(BaseController):  # STEP 2 CHANGE: Inherit fr
     def __init__(self):
         # STEP 2 ADDITION: Call parent constructor
         super().__init__()
+        
+        # STEP 3 ADDITION: Initialize file controller
+        self.file_controller = FileController()
         
         # Initialize enhanced components
         self.summarizer = TextSummarizer()
@@ -68,27 +73,18 @@ class EnhancedSummarizerController(BaseController):  # STEP 2 CHANGE: Inherit fr
         self.gui.on_method_change = self.handle_method_change
 
     def handle_file_selection(self, file_path: str):
-        """Enhanced file selection with SRT timestamp parsing."""
+        """Enhanced file selection with SRT timestamp parsing - STEP 3 REFACTORED."""
         try:
             self.gui.set_status("📂 Loading file with AI preprocessing...")
 
-            # Validate file
-            if not os.path.exists(file_path):
-                self.gui.show_error("File Error", f"File not found: {file_path}")
+            # STEP 3: Use FileController instead of inline file reading
+            file_result = self.file_controller.read_file_content(file_path)
+
+            if not file_result['success']:
+                self.gui.show_error("File Error", file_result['error'])
                 return
 
-            # Read file content with encoding detection
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    raw_content = f.read()
-            except UnicodeDecodeError:
-                try:
-                    with open(file_path, 'r', encoding='latin-1') as f:
-                        raw_content = f.read()
-                except Exception as e:
-                    self.gui.show_error("Encoding Error",
-                        f"Could not read file. Try converting to UTF-8 encoding.\n\nError: {str(e)}")
-                    return
+            raw_content = file_result['content']
 
             # Enhanced SRT processing with timestamp preservation
             self.is_srt_file = self.srt_parser.is_srt_file(file_path)
@@ -126,14 +122,15 @@ class EnhancedSummarizerController(BaseController):  # STEP 2 CHANGE: Inherit fr
             self.gui.set_file_path(os.path.basename(file_path))
             self.gui.display_original_text(self.original_text)
 
-            # Enhanced file info
+            # Enhanced file info with encoding information from FileController
             word_count = len(self.original_text.split())
             char_count = len(self.original_text)
+            encoding_info = f" ({file_result['encoding']} encoding)" if file_result['encoding'] else ""
 
             if self.is_srt_file:
-                self.gui.set_status(f"✅ Loaded {file_type}: {subtitle_count} subtitles • {word_count:,} words • {total_duration}")
+                self.gui.set_status(f"✅ Loaded {file_type}: {subtitle_count} subtitles • {word_count:,} words • {total_duration}{encoding_info}")
             else:
-                self.gui.set_status(f"✅ Loaded {file_type}: {word_count:,} words • {char_count:,} characters • Ready for AI analysis")
+                self.gui.set_status(f"✅ Loaded {file_type}: {word_count:,} words • {char_count:,} characters • Ready for AI analysis{encoding_info}")
 
         except Exception as e:
             # STEP 2 ENHANCEMENT: Use base controller error handling
