@@ -2,7 +2,7 @@
 File Controller Module
 
 Handles all file I/O operations for the Text Summarizer application.
-STEP 3: First function migration - file reading logic moved here.
+STEP 4: Added SRT validation and parsing logic.
 """
 
 import os
@@ -73,6 +73,89 @@ class FileController(BaseController):
                 'encoding': '',
                 'error': f'Unexpected error reading file: {str(e)}'
             }
+
+    def validate_srt_format(self, file_path: str, content: str) -> Dict[str, Any]:
+        """
+        Validate if file is SRT and parse if valid.
+        
+        STEP 4: Moved SRT validation logic from handle_file_selection()
+        
+        Args:
+            file_path: Path to file
+            content: File content to validate/parse
+            
+        Returns:
+            Dict with 'is_srt', 'entries', 'text', 'error' keys
+        """
+        try:
+            # Check file extension
+            is_srt_file = file_path.lower().endswith('.srt')
+
+            if not is_srt_file:
+                return {
+                    'is_srt': False,
+                    'entries': None,
+                    'text': content,  # Return original content for .txt files
+                    'error': None
+                }
+
+            # Parse SRT content (we'll move SRTParser to models later in Phase 3)
+            from text_summarizer_core import SRTParser
+            parser = SRTParser()
+
+            srt_entries = parser.parse_srt_with_timestamps(content)
+
+            if not srt_entries:
+                return {
+                    'is_srt': True,
+                    'entries': [],
+                    'text': '',
+                    'error': 'Could not parse SRT file. Please check the format:\n\n' +
+                           'Expected format:\n1\n00:00:00,000 --> 00:00:01,000\nText content'
+                }
+
+            # Extract text from SRT entries
+            extracted_text = ' '.join(entry['text'] for entry in srt_entries)
+
+            return {
+                'is_srt': True,
+                'entries': srt_entries,
+                'text': extracted_text,
+                'error': None
+            }
+
+        except Exception as e:
+            return {
+                'is_srt': True,  # We know it's SRT by extension
+                'entries': [],
+                'text': '',
+                'error': f'Error parsing SRT file: {str(e)}'
+            }
+
+    def calculate_srt_duration(self, srt_entries: list) -> str:
+        """
+        Calculate total duration of SRT file.
+        
+        STEP 4: Moved from _calculate_srt_duration() in main controller
+        
+        Args:
+            srt_entries: List of SRT entries with timestamps
+            
+        Returns:
+            Duration string or empty if no entries
+        """
+        if not srt_entries:
+            return ""
+
+        try:
+            # Get last subtitle end time
+            last_entry = srt_entries[-1]
+            end_time = last_entry['end']
+
+            # Convert to readable format
+            return f"Duration: {end_time}"
+        except:
+            return "Duration: Unknown"
 
     def get_file_info(self, file_path: str) -> Dict[str, Any]:
         """

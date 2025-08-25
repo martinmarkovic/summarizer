@@ -3,7 +3,7 @@
 Enhanced Text Summarizer Application Controller
 
 Advanced AI-powered summarization with SRT timestamp support.
-REFACTORED - Step 3: Now uses FileController for file operations
+REFACTORED - Step 4: Now uses FileController for SRT validation
 
 """
 
@@ -73,43 +73,28 @@ class EnhancedSummarizerController(BaseController):  # STEP 2 CHANGE: Inherit fr
         self.gui.on_method_change = self.handle_method_change
 
     def handle_file_selection(self, file_path: str):
-        """Enhanced file selection with SRT timestamp parsing - STEP 3 REFACTORED."""
+        """Enhanced file selection - STEP 4 REFACTORED with FileController for SRT validation."""
         try:
             self.gui.set_status("📂 Loading file with AI preprocessing...")
 
-            # STEP 3: Use FileController instead of inline file reading
+            # STEP 3: Use FileController for file reading
             file_result = self.file_controller.read_file_content(file_path)
 
             if not file_result['success']:
                 self.gui.show_error("File Error", file_result['error'])
                 return
 
-            raw_content = file_result['content']
+            # STEP 4: Use FileController for SRT validation
+            srt_result = self.file_controller.validate_srt_format(file_path, file_result['content'])
 
-            # Enhanced SRT processing with timestamp preservation
-            self.is_srt_file = self.srt_parser.is_srt_file(file_path)
+            if srt_result['error']:
+                self.gui.show_error("SRT Parse Error", srt_result['error'])
+                return
 
-            if self.is_srt_file:
-                # Parse SRT with timestamps
-                self.srt_entries = self.srt_parser.parse_srt_with_timestamps(raw_content)
-                self.original_text = ' '.join(entry['text'] for entry in self.srt_entries)
-                file_type = "SRT subtitle"
-
-                if not self.srt_entries:
-                    self.gui.show_error("SRT Parse Error",
-                        "Could not parse SRT file. Please check the format:\n\n" +
-                        "Expected format:\n1\n00:00:00,000 --> 00:00:01,000\nText content")
-                    return
-
-                subtitle_count = len(self.srt_entries)
-                total_duration = self._calculate_srt_duration()
-            else:
-                # Regular text file
-                self.srt_entries = None
-                self.original_text = raw_content
-                file_type = "text"
-                subtitle_count = 0
-                total_duration = ""
+            # Update state using results from FileController
+            self.is_srt_file = srt_result['is_srt']
+            self.srt_entries = srt_result['entries']
+            self.original_text = srt_result['text']
 
             # Validate content
             if not self.original_text.strip():
@@ -122,14 +107,20 @@ class EnhancedSummarizerController(BaseController):  # STEP 2 CHANGE: Inherit fr
             self.gui.set_file_path(os.path.basename(file_path))
             self.gui.display_original_text(self.original_text)
 
-            # Enhanced file info with encoding information from FileController
+            # Enhanced file info with FileController data
             word_count = len(self.original_text.split())
             char_count = len(self.original_text)
             encoding_info = f" ({file_result['encoding']} encoding)" if file_result['encoding'] else ""
 
             if self.is_srt_file:
+                subtitle_count = len(self.srt_entries) if self.srt_entries else 0
+                # STEP 4: Use FileController for duration calculation
+                total_duration = self.file_controller.calculate_srt_duration(self.srt_entries)
+                file_type = "SRT subtitle"
+                
                 self.gui.set_status(f"✅ Loaded {file_type}: {subtitle_count} subtitles • {word_count:,} words • {total_duration}{encoding_info}")
             else:
+                file_type = "text"
                 self.gui.set_status(f"✅ Loaded {file_type}: {word_count:,} words • {char_count:,} characters • Ready for AI analysis{encoding_info}")
 
         except Exception as e:
@@ -233,20 +224,7 @@ class EnhancedSummarizerController(BaseController):  # STEP 2 CHANGE: Inherit fr
         }
         return algorithm_types.get(method, 'Unknown')
 
-    def _calculate_srt_duration(self) -> str:
-        """Calculate total duration of SRT file."""
-        if not self.srt_entries:
-            return ""
-
-        try:
-            # Get last subtitle end time
-            last_entry = self.srt_entries[-1]
-            end_time = last_entry['end']
-
-            # Convert to readable format
-            return f"Duration: {end_time}"
-        except:
-            return "Duration: Unknown"
+    # STEP 4 REMOVAL: _calculate_srt_duration() moved to FileController
 
     def run(self):
         """Start the enhanced application."""
