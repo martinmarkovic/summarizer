@@ -1,6 +1,10 @@
 """
+
 Enhanced Text Summarizer Application Controller
+
 Advanced AI-powered summarization with SRT timestamp support.
+REFACTORED - Step 2: Now uses BaseController inheritance
+
 """
 
 import tkinter as tk
@@ -8,6 +12,9 @@ from tkinter import messagebox
 import os
 import sys
 from typing import Optional
+
+# Import base controller - STEP 2 ADDITION
+from controllers.base_controller import BaseController
 
 # Import our enhanced modules
 try:
@@ -18,11 +25,13 @@ except ImportError as e:
     print("Make sure text_summarizer_core.py and text_summarizer_gui.py are in the same directory.")
     sys.exit(1)
 
-
-class EnhancedSummarizerController:
+class EnhancedSummarizerController(BaseController):  # STEP 2 CHANGE: Inherit from BaseController
     """Enhanced controller with AI algorithms and SRT timestamp support."""
 
     def __init__(self):
+        # STEP 2 ADDITION: Call parent constructor
+        super().__init__()
+        
         # Initialize enhanced components
         self.summarizer = TextSummarizer()
         self.srt_parser = SRTParser()
@@ -32,14 +41,17 @@ class EnhancedSummarizerController:
         configure_styles()
         self.gui = SummarizerGUI(self.root)
 
+        # STEP 2 ADDITION: Set GUI reference in base controller
+        self.set_gui(self.gui)
+
         # Connect GUI callbacks
         self._connect_callbacks()
 
-        # Application state
-        self.current_file_path: Optional[str] = None
-        self.original_text: str = ""
-        self.srt_entries: Optional[list] = None  # Store SRT timestamp data
-        self.is_srt_file: bool = False
+        # STEP 2 REMOVAL: These state variables are now in BaseController
+        # Removed: self.current_file_path: Optional[str] = None
+        # Removed: self.original_text: str = ""
+        # Removed: self.srt_entries: Optional[list] = None
+        # Removed: self.is_srt_file: bool = False
 
         # Show enhanced welcome message
         available_algorithms = len(self.summarizer.get_available_methods())
@@ -74,8 +86,8 @@ class EnhancedSummarizerController:
                     with open(file_path, 'r', encoding='latin-1') as f:
                         raw_content = f.read()
                 except Exception as e:
-                    self.gui.show_error("Encoding Error", 
-                                      f"Could not read file. Try converting to UTF-8 encoding.\n\nError: {str(e)}")
+                    self.gui.show_error("Encoding Error",
+                        f"Could not read file. Try converting to UTF-8 encoding.\n\nError: {str(e)}")
                     return
 
             # Enhanced SRT processing with timestamp preservation
@@ -88,14 +100,13 @@ class EnhancedSummarizerController:
                 file_type = "SRT subtitle"
 
                 if not self.srt_entries:
-                    self.gui.show_error("SRT Parse Error", 
-                                      "Could not parse SRT file. Please check the format:\n\n" +
-                                      "Expected format:\n1\n00:00:00,000 --> 00:00:01,000\nText content")
+                    self.gui.show_error("SRT Parse Error",
+                        "Could not parse SRT file. Please check the format:\n\n" +
+                        "Expected format:\n1\n00:00:00,000 --> 00:00:01,000\nText content")
                     return
 
                 subtitle_count = len(self.srt_entries)
                 total_duration = self._calculate_srt_duration()
-
             else:
                 # Regular text file
                 self.srt_entries = None
@@ -106,8 +117,8 @@ class EnhancedSummarizerController:
 
             # Validate content
             if not self.original_text.strip():
-                self.gui.show_error("Empty Content", 
-                                  "The file appears to be empty or contains no readable text content.")
+                self.gui.show_error("Empty Content",
+                    "The file appears to be empty or contains no readable text content.")
                 return
 
             # Update GUI
@@ -125,9 +136,8 @@ class EnhancedSummarizerController:
                 self.gui.set_status(f"✅ Loaded {file_type}: {word_count:,} words • {char_count:,} characters • Ready for AI analysis")
 
         except Exception as e:
-            self.gui.show_error("File Loading Error", 
-                              f"An unexpected error occurred while loading the file:\n\n{str(e)}")
-            self.gui.set_status("❌ Error loading file")
+            # STEP 2 ENHANCEMENT: Use base controller error handling
+            self.handle_application_error(e, "file loading")
 
     def handle_summarization(self, text: str, method: str, n_sentences: int) -> str:
         """Enhanced summarization with SRT timestamp support."""
@@ -168,7 +178,7 @@ class EnhancedSummarizerController:
             # Update status with enhanced info
             timestamp_info = " + Timestamps" if (self.is_srt_file and show_timestamps) else ""
             self.gui.set_status(f"🤖 {method.upper()} Analysis Complete{timestamp_info} • " +
-                              f"Compression: {original_words:,} → {summary_words:,} words ({compression_ratio:.1f}%)")
+                f"Compression: {original_words:,} → {summary_words:,} words ({compression_ratio:.1f}%)")
 
             return summary
 
@@ -180,11 +190,8 @@ class EnhancedSummarizerController:
     def handle_clear(self):
         """Enhanced clear with state reset."""
         try:
-            # Reset enhanced application state
-            self.current_file_path = None
-            self.original_text = ""
-            self.srt_entries = None
-            self.is_srt_file = False
+            # STEP 2 ENHANCEMENT: Use base controller reset method
+            self.reset_state()
 
             # Clear GUI
             self.gui.clear_all_text()
@@ -193,7 +200,8 @@ class EnhancedSummarizerController:
             self.gui.set_status(f"🗑️ Cleared • {available_algorithms} AI algorithms ready for new analysis")
 
         except Exception as e:
-            self.gui.show_error("Clear Error", f"Error occurred while clearing:\n\n{str(e)}")
+            # STEP 2 ENHANCEMENT: Use base controller error handling
+            self.handle_application_error(e, "clearing data")
 
     def handle_method_change(self, method: str):
         """Enhanced method change with detailed feedback."""
@@ -211,7 +219,8 @@ class EnhancedSummarizerController:
             self.gui.set_status(f"🔧 Algorithm: {method.upper()} ({algo_type}) • {description}")
 
         except Exception as e:
-            self.gui.show_error("Algorithm Error", f"Error changing algorithm:\n\n{str(e)}")
+            # STEP 2 ENHANCEMENT: Use base controller error handling
+            self.handle_application_error(e, "changing algorithm")
 
     def _get_algorithm_type(self, method: str) -> str:
         """Get algorithm category type."""
@@ -262,14 +271,13 @@ class EnhancedSummarizerController:
             'supported_formats': ['.txt', '.srt'],
             'features': [
                 'SRT Timestamp Preservation',
-                'Multi-Algorithm AI Analysis', 
+                'Multi-Algorithm AI Analysis',
                 'Export Functionality',
                 'Real-time Statistics',
                 'Enhanced Error Handling',
                 'MVC Architecture'
             ]
         }
-
 
 def main():
     """Enhanced main application entry point."""
@@ -304,7 +312,6 @@ def main():
         print("• NLTK data is downloaded")
         print("• All module files are present")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()
