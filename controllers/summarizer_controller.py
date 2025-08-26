@@ -1,27 +1,28 @@
 """
-Summarizer Controller Module
+Summarizer Controller Module - PHASE 4 OPTIMIZED
 
 Handles summarization coordination and statistics calculation.
-PHASE 3 - STEP 8: Business logic coordination moved from main controller.
+PHASE 4: Optimized dependencies, uses models package, clean architecture.
 """
 
 from typing import Dict, Any, Optional
 from .base_controller import BaseController
+from models import TextSummarizer, SRTParser
 
 class SummarizerController(BaseController):
-    """Controller for summarization operations and statistics."""
+    """Controller for summarization operations and statistics - PHASE 4 OPTIMIZED."""
 
-    def __init__(self, summarizer, srt_parser):
+    def __init__(self):
         super().__init__()
-        self.summarizer = summarizer
-        self.srt_parser = srt_parser
+        self.summarizer = TextSummarizer()
+        self.srt_parser = SRTParser()
 
     def coordinate_summarization(self, text: str, method: str, n_sentences: int, 
                                 srt_entries: list = None, show_timestamps: bool = False) -> Dict[str, Any]:
         """
         Coordinate the complete summarization process.
         
-        PHASE 3 - STEP 8: Moved from handle_summarization() in text_summarizer_app.py
+        PHASE 4: Optimized with models package integration
         
         Args:
             text: Input text to summarize
@@ -48,7 +49,7 @@ class SummarizerController(BaseController):
             method = validation_result['method']
             n_sentences = validation_result['n_sentences']
 
-            # Perform summarization
+            # Perform summarization using models package
             if srt_entries and show_timestamps:
                 summary = self.summarizer.summarize(text, method, n_sentences, srt_entries)
             else:
@@ -94,7 +95,7 @@ class SummarizerController(BaseController):
                 'error': 'No text provided for summarization'
             }
 
-        # Validate method
+        # Validate method using models package
         available_methods = self.summarizer.get_available_methods()
         if method not in available_methods:
             method = 'weighted'  # Fallback to default
@@ -117,7 +118,7 @@ class SummarizerController(BaseController):
         """
         Calculate comprehensive summarization statistics.
         
-        PHASE 3 - STEP 11: Enhanced statistics calculation
+        PHASE 4: Enhanced with SRT statistics from models package
         
         Args:
             original_text: Original input text
@@ -160,11 +161,13 @@ class SummarizerController(BaseController):
                 'algorithm_description': self.summarizer.get_method_description(method)
             }
             
-            # Add SRT-specific statistics
+            # Add SRT-specific statistics using models package
             if srt_entries:
+                srt_stats = self.srt_parser.get_srt_statistics(srt_entries)
                 stats.update({
-                    'subtitle_count': len(srt_entries),
-                    'avg_subtitle_length': round(sum(len(entry['text'].split()) for entry in srt_entries) / len(srt_entries), 1),
+                    'subtitle_count': srt_stats['total_entries'],
+                    'avg_subtitle_length': srt_stats['average_words_per_entry'],
+                    'srt_duration': srt_stats['duration'],
                     'timestamp_coverage': self._calculate_timestamp_coverage(summary, srt_entries) if has_timestamps else 0
                 })
             
@@ -243,8 +246,6 @@ class SummarizerController(BaseController):
     def get_algorithm_category(self, method: str) -> str:
         """
         Get algorithm category type.
-        
-        PHASE 3 - STEP 8: Moved from _get_algorithm_type() in main controller
         """
         algorithm_types = {
             'weighted': 'Multi-Factor',

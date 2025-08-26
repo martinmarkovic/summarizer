@@ -1,19 +1,21 @@
 """
-File Controller Module
+File Controller Module - PHASE 4 OPTIMIZED
 
 Handles all file I/O operations for the Text Summarizer application.
-PHASE 3: Complete file operations controller with SRT support.
+PHASE 4: Optimized imports and dependencies, uses models package.
 """
 
 import os
 from typing import Dict, Any
 from .base_controller import BaseController
+from models import SRTParser
 
 class FileController(BaseController):
-    """Controller for comprehensive file operations."""
+    """Controller for comprehensive file operations - PHASE 4 OPTIMIZED."""
 
     def __init__(self):
         super().__init__()
+        self.srt_parser = SRTParser()
 
     def read_file_content(self, file_path: str) -> Dict[str, Any]:
         """
@@ -85,7 +87,7 @@ class FileController(BaseController):
         """
         try:
             # Check file extension
-            is_srt_file = file_path.lower().endswith('.srt')
+            is_srt_file = self.srt_parser.is_srt_file(file_path)
 
             if not is_srt_file:
                 return {
@@ -95,11 +97,8 @@ class FileController(BaseController):
                     'error': None
                 }
 
-            # Parse SRT content (will move SRTParser to models in Phase 4)
-            from text_summarizer_core import SRTParser
-            parser = SRTParser()
-
-            srt_entries = parser.parse_srt_with_timestamps(content)
+            # Parse SRT content using models package
+            srt_entries = self.srt_parser.parse_srt_with_timestamps(content)
 
             if not srt_entries:
                 return {
@@ -130,7 +129,7 @@ class FileController(BaseController):
 
     def calculate_srt_duration(self, srt_entries: list) -> str:
         """
-        Calculate total duration of SRT file.
+        Calculate total duration of SRT file using models package.
         
         Args:
             srt_entries: List of SRT entries with timestamps
@@ -138,18 +137,7 @@ class FileController(BaseController):
         Returns:
             Duration string or empty if no entries
         """
-        if not srt_entries:
-            return ""
-
-        try:
-            # Get last subtitle end time
-            last_entry = srt_entries[-1]
-            end_time = last_entry['end']
-
-            # Convert to readable format
-            return f"Duration: {end_time}"
-        except:
-            return "Duration: Unknown"
+        return self.srt_parser.get_srt_duration(srt_entries)
 
     def get_file_info(self, file_path: str) -> Dict[str, Any]:
         """
@@ -175,7 +163,7 @@ class FileController(BaseController):
                 'name': file_name,
                 'path': file_path,
                 'extension': file_extension,
-                'is_srt': file_extension == '.srt',
+                'is_srt': self.srt_parser.is_srt_file(file_path),
                 'is_text': file_extension in ['.txt', '.md'],
                 'size_mb': round(file_size / (1024 * 1024), 2) if file_size > 0 else 0
             }
@@ -189,7 +177,7 @@ class FileController(BaseController):
 
     def process_file_completely(self, file_path: str) -> Dict[str, Any]:
         """
-        Complete file processing pipeline.
+        Complete file processing pipeline - PHASE 4 OPTIMIZED.
         
         Args:
             file_path: Path to file to process
@@ -225,10 +213,13 @@ class FileController(BaseController):
                     'file_info': file_info
                 }
 
-            # Step 4: Calculate additional metrics
+            # Step 4: Calculate additional metrics using models
             duration = ""
+            srt_statistics = {}
+            
             if srt_result['is_srt'] and srt_result['entries']:
                 duration = self.calculate_srt_duration(srt_result['entries'])
+                srt_statistics = self.srt_parser.get_srt_statistics(srt_result['entries'])
 
             return {
                 'success': True,
@@ -238,6 +229,7 @@ class FileController(BaseController):
                 'is_srt': srt_result['is_srt'],
                 'srt_entries': srt_result['entries'],
                 'duration': duration,
+                'srt_statistics': srt_statistics,
                 'error': None
             }
 
