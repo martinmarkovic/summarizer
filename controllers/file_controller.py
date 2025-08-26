@@ -2,7 +2,7 @@
 File Controller Module
 
 Handles all file I/O operations for the Text Summarizer application.
-STEP 4: Added SRT validation and parsing logic.
+PHASE 3: Complete file operations controller with SRT support.
 """
 
 import os
@@ -10,7 +10,7 @@ from typing import Dict, Any
 from .base_controller import BaseController
 
 class FileController(BaseController):
-    """Controller for file operations."""
+    """Controller for comprehensive file operations."""
 
     def __init__(self):
         super().__init__()
@@ -18,8 +18,6 @@ class FileController(BaseController):
     def read_file_content(self, file_path: str) -> Dict[str, Any]:
         """
         Read file content with encoding detection.
-        
-        STEP 3: Moved from handle_file_selection() in text_summarizer_app.py
         
         Args:
             file_path: Path to file to read
@@ -78,8 +76,6 @@ class FileController(BaseController):
         """
         Validate if file is SRT and parse if valid.
         
-        STEP 4: Moved SRT validation logic from handle_file_selection()
-        
         Args:
             file_path: Path to file
             content: File content to validate/parse
@@ -99,7 +95,7 @@ class FileController(BaseController):
                     'error': None
                 }
 
-            # Parse SRT content (we'll move SRTParser to models later in Phase 3)
+            # Parse SRT content (will move SRTParser to models in Phase 4)
             from text_summarizer_core import SRTParser
             parser = SRTParser()
 
@@ -136,8 +132,6 @@ class FileController(BaseController):
         """
         Calculate total duration of SRT file.
         
-        STEP 4: Moved from _calculate_srt_duration() in main controller
-        
         Args:
             srt_entries: List of SRT entries with timestamps
             
@@ -159,7 +153,7 @@ class FileController(BaseController):
 
     def get_file_info(self, file_path: str) -> Dict[str, Any]:
         """
-        Get basic file information.
+        Get comprehensive file information.
         
         Args:
             file_path: Path to file
@@ -169,16 +163,21 @@ class FileController(BaseController):
         """
         try:
             if not os.path.exists(file_path):
-                return {'exists': False, 'size': 0, 'name': ''}
+                return {'exists': False, 'size': 0, 'name': '', 'error': 'File not found'}
                 
             file_size = os.path.getsize(file_path)
             file_name = os.path.basename(file_path)
+            file_extension = os.path.splitext(file_path)[1].lower()
             
             return {
                 'exists': True,
                 'size': file_size,
                 'name': file_name,
-                'path': file_path
+                'path': file_path,
+                'extension': file_extension,
+                'is_srt': file_extension == '.srt',
+                'is_text': file_extension in ['.txt', '.md'],
+                'size_mb': round(file_size / (1024 * 1024), 2) if file_size > 0 else 0
             }
         except Exception as e:
             return {
@@ -186,4 +185,65 @@ class FileController(BaseController):
                 'size': 0,
                 'name': '',
                 'error': str(e)
+            }
+
+    def process_file_completely(self, file_path: str) -> Dict[str, Any]:
+        """
+        Complete file processing pipeline.
+        
+        Args:
+            file_path: Path to file to process
+            
+        Returns:
+            Dict with complete file processing results
+        """
+        try:
+            # Step 1: Get file info
+            file_info = self.get_file_info(file_path)
+            if not file_info['exists']:
+                return {
+                    'success': False,
+                    'error': file_info.get('error', 'File does not exist'),
+                    'file_info': file_info
+                }
+
+            # Step 2: Read file content
+            file_result = self.read_file_content(file_path)
+            if not file_result['success']:
+                return {
+                    'success': False,
+                    'error': file_result['error'],
+                    'file_info': file_info
+                }
+
+            # Step 3: Validate/parse SRT if applicable
+            srt_result = self.validate_srt_format(file_path, file_result['content'])
+            if srt_result['error']:
+                return {
+                    'success': False,
+                    'error': srt_result['error'],
+                    'file_info': file_info
+                }
+
+            # Step 4: Calculate additional metrics
+            duration = ""
+            if srt_result['is_srt'] and srt_result['entries']:
+                duration = self.calculate_srt_duration(srt_result['entries'])
+
+            return {
+                'success': True,
+                'file_info': file_info,
+                'content': srt_result['text'],
+                'encoding': file_result['encoding'],
+                'is_srt': srt_result['is_srt'],
+                'srt_entries': srt_result['entries'],
+                'duration': duration,
+                'error': None
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'Complete file processing failed: {str(e)}',
+                'file_info': {}
             }
